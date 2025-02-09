@@ -4,8 +4,7 @@ def apVersion = getEnvValue("apVersion", "");
 
 apply plugin: 'com.android.application'
 apply plugin: 'com.taobao.atlas'
-apply plugin: 'com.taobao.atlas.dexpatch'
-apply from: 'dexPatchWraper.gradle'
+//apply plugin: 'com.taobao.atlas.dexpatch'
 
 //通过增加判断逻辑，打出不同类型的定制包
 def appId = "com.taobao.demo"
@@ -21,12 +20,12 @@ repositories {
 }
 
 android {
-    compileSdkVersion 25
-    buildToolsVersion '25.0.0'
+    compileSdkVersion 26
+    buildToolsVersion '26.0.2'
     defaultConfig {
         applicationId appId
         minSdkVersion minVersion
-        targetSdkVersion 25
+        targetSdkVersion 26
         versionCode 1
         versionName version
         vectorDrawables.useSupportLibrary = true
@@ -36,11 +35,17 @@ android {
         }else{
         	buildConfigField "boolean", "API_ENV", "false"
         }
+        multiDexEnabled = false
+
     }
-
-
+        
     dataBinding {
         enabled = true
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_1_8
+        targetCompatibility JavaVersion.VERSION_1_8
     }
 
 
@@ -57,36 +62,25 @@ android {
         }
     }
 
-    //    productFlavors {
-    //        dev {
-    //            minSdkVersion 14
-    //        }
-
-    //        beta {
-    //            minSdkVersion 21
-    //        }
-    //    }
 }
 
 atlas {
-
+    instantAppEnabled true
     atlasEnabled true
     tBuildConfig {
-        autoStartBundles = ['com.taobao.firstbundle'] //自启动bundle配置
-        outOfApkBundles = ['remotebundle']
         preLaunch = 'com.taobao.demo.DemoPreLaunch'
         classInject false
+        aaptConstantId true
         dataBindingBundles = ['com.taobao.databindbundle']
+       allBundlesToMdex true
+
     }
 
-    manifestOptions {
-        addAtlasProxyComponents true
-    }
-
+   
 
     patchConfigs {
         debug {
-            createTPatch true
+            createTPatch false
         }
     }
 
@@ -101,15 +95,15 @@ atlas {
     }
 }
 
-dependencies {
-    compile fileTree(include: ['*.jar'], dir: 'libs')
-    compile(rootProject.ext.lib_atlas_core) {
 
-        transitive = true
-    }
+dependencies {
+
+    compile fileTree(dir: 'libs', include: ['*.jar'])
+
     compile project(':middlewarelibrary')
     compile project(':splashscreen')
-    compile project(':activitygroupcompat')
+    compile project(':databindinglibrary')
+//    compile project(':activitygroupcompat')
     bundleCompile project(':firstbundle')
     bundleCompile project(':secondbundle')
     bundleCompile project(':remotebundle')
@@ -119,9 +113,8 @@ dependencies {
     compile 'com.android.support:design:25.1.0'
     compile 'com.android.support:support-vector-drawable:25.1.0'
     compile 'com.android.support:support-v4:25.1.0'
-    compile rootProject.ext.lib_atlas_update
     compile 'com.alibaba:fastjson:1.1.45.android@jar'
-    compile 'com.android.support.constraint:constraint-layout:1.0.0-alpha8'
+    compile 'com.android.support.constraint:constraint-layout:1.0.2'
     compile 'com.android.support:recyclerview-v7:25.3.0'
     compile project(':atlas_core')
 }
@@ -174,7 +167,7 @@ publishing {
 publishing {
     publications {
         maven(MavenPublication) {
-            artifact "${project.buildDir}/outputs/apk/${project.name}-debug.ap"
+            artifact "${project.buildDir}/outputs/apk/debug/${project.name}-debug.ap"
             artifactId "AP-debug"
         }
     }

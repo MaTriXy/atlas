@@ -218,6 +218,7 @@ import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Consumer;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -228,6 +229,7 @@ import com.taobao.android.builder.AtlasBuildContext;
 import com.taobao.android.builder.dependency.AtlasDependencyTree;
 import com.taobao.android.builder.dependency.diff.DependencyDiff;
 import com.taobao.android.builder.dependency.model.AwbBundle;
+import com.taobao.android.builder.extension.TBuildConfig;
 import com.taobao.android.builder.tools.MD5Util;
 import com.taobao.android.builder.tools.bundleinfo.model.BasicBundleInfo;
 import com.taobao.android.builder.tools.bundleinfo.model.BundleInfo;
@@ -270,6 +272,9 @@ public class ApkInjectInfoCreator {
         Map<String, String> baseTagMap = appVariantContext.getBaseUnitTagMap();
 
         for (AwbBundle awbBundle : atlasDependencyTree.getAwbBundles()) {
+//            if (awbBundle.isMBundle){
+//                continue;
+//            }
 
             BundleInfo bundleInfo = awbBundle.bundleInfo;
 
@@ -296,6 +301,9 @@ public class ApkInjectInfoCreator {
 
             if (!bundleInfo.getIsInternal()) {
                 basicBundleInfo.setIsInternal(false);
+            }
+            if (awbBundle.isMBundle){
+                basicBundleInfo.setIsMBundle(true);
             }
             if (!bundleInfo.getActivities().isEmpty()) {
                 basicBundleInfo.setActivities(bundleInfo.getActivities());
@@ -326,7 +334,17 @@ public class ApkInjectInfoCreator {
             basicBundleInfoMap.put(bundleInfo.getPkgName(), basicBundleInfo);
         }
 
-        injectParam.bundleInfo = JSON.toJSONString(basicBundleInfos);
+//        Collections.sort(basicBundleInfos, (o1, o2) -> {
+//            if (o1.getDependency().contains(o2.getPkgName())){
+//                return -1;
+//            }else {
+//                return 1;
+//            }
+//        });
+
+       basicBundleInfos.forEach(basicBundleInfo -> checkDependency(basicBundleInfo,atlasDependencyTree.getAwbBundles()));
+
+                injectParam.bundleInfo = JSON.toJSONString(basicBundleInfos);
 
         //FIXME MOVE TO MTL-PLUGIN
         //List<String> autoStartBundles = new ArrayList<String>(appVariantContext.getAtlasExtension().getTBuildConfig
@@ -350,6 +368,21 @@ public class ApkInjectInfoCreator {
         mergeBundleInfos(appVariantContext, injectParam, basicBundleInfos, basicBundleInfoMap);
         return injectParam;
     }
+
+    private void checkDependency(BasicBundleInfo basicBundleInfo, List<AwbBundle> awbBundles) {
+        if (basicBundleInfo.getIsMBundle()){
+           basicBundleInfo.getDependency().parallelStream().forEach(s -> awbBundles.stream().forEach(awbBundle -> {
+               if (awbBundle.getPackageName().equals(s)){
+                   if (!awbBundle.isMBundle){
+                       throw new IllegalArgumentException(basicBundleInfo.getPkgName()+" mbundle can not dependent local bundle or remote Bundle" +s);
+                   }
+               }
+           }));
+        }
+
+    }
+
+
 
 
     private void mergeBundleInfos(AppVariantContext appVariantContext, InjectParam injectParam,
@@ -417,9 +450,6 @@ public class ApkInjectInfoCreator {
     }
 
 
-    public void injectTpatchValuesRes(AppVariantContext appVariantContext,
-                                      File valuesXml){
-
+    public void injectTpatchValuesRes(AppVariantContext appVariantContext, File valuesXml) {
     }
-
 }

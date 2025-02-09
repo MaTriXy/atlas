@@ -266,18 +266,23 @@ public class ManifestFileUtils {
 
     public static String[] SYSTEM_PERMISSION = new String[] {"android.permission", "com.android"};
 
+    private static final String INSTANT_RUN_CONTENTPROVIDER = "com.android.tools.ir.server.InstantRunContentProvider";
+
+    private static final String ALI_INSTANT_RUN_CONTENTPROVIDER = "com.android.alibaba.ip.server.InstantRunContentProvider";
+
+
     /**
      * Follow up the manifest
-     *
-     * @param mainManifest
+     *  @param mainManifest
      * @param libManifestMap
      * @param baseBunfleInfoFile
      * @param manifestOptions
+     * @param debuggable
      */
     public static Result postProcessManifests(File mainManifest, Map<String, File> libManifestMap,
                                               Multimap<String, File> libDependenciesMaps, File baseBunfleInfoFile,
                                               ManifestOptions manifestOptions, boolean addMultiDex,
-                                              boolean isInstantRun, Set<String> remoteBundles)
+                                              boolean isInstantRun, boolean debuggable, Set<String> remoteBundles, Set<String> insideBundles, boolean pushInstall)
         throws IOException, DocumentException {
 
         Result result = new Result();
@@ -289,12 +294,14 @@ public class ManifestFileUtils {
         Document document = XmlHelper.readXml(inputFile);
 
         if (null != baseBunfleInfoFile && baseBunfleInfoFile.exists()) {
-            addApplicationMetaData(document, libManifestMap, baseBunfleInfoFile, manifestOptions, remoteBundles);
+            addApplicationMetaData(document, libManifestMap, baseBunfleInfoFile, manifestOptions, remoteBundles,insideBundles);
         }
 
         if (null != manifestOptions && manifestOptions.isAddAtlasProxyComponents()) {
             AtlasProxy.addAtlasProxyClazz(document, manifestOptions.getAtlasProxySkipChannels(), result);
         }
+
+            addAndroidLabel(document,pushInstall);
 
         if (null != manifestOptions && manifestOptions.isAddBundleLocation()) {
             addBundleLocationToDestManifest(document, libManifestMap, libDependenciesMaps, manifestOptions);
@@ -310,7 +317,12 @@ public class ManifestFileUtils {
             removeProvider(document);
         }
         if (isInstantRun) {
-            removeProcess(document);
+            singleProcess(document,ManifestFileUtils.getApplicationId(inputFile));
+        }
+
+        if (isInstantRun && !debuggable){
+            disableDebuggable(document);
+
         }
         removeCustomLaunches(document, manifestOptions);
         updatePermission(document, manifestOptions);
@@ -321,6 +333,50 @@ public class ManifestFileUtils {
         printlnPermissions(document);
 
         return result;
+    }
+
+    private static void singleProcess(Document document, String applicationId) {
+            List<Node> nodes = document.getRootElement().selectNodes("//provider");
+        for (Node node : nodes) {
+            Element element = (Element)node;
+            String value = element.attributeValue("name");
+            if (value.equals(INSTANT_RUN_CONTENTPROVIDER)){
+                element.addAttribute("name",ALI_INSTANT_RUN_CONTENTPROVIDER);
+                element.addAttribute("authorities",applicationId+"."+ALI_INSTANT_RUN_CONTENTPROVIDER);
+                Attribute attribute = element.attribute("multiprocess");
+                if (attribute!= null) {
+                    attribute.setValue("false");
+                    logger.warn("singleProcess  com.android.tools.ir.server.InstantRunContentProvider.......");
+                }
+
+            }
+
+        }
+
+    }
+
+    private static void disableDebuggable(Document document) {
+        Element root = document.getRootElement();// Get the root node
+        Element app = root.element("application");
+        Attribute attribute = app.attribute("debuggable");
+        if (attribute!= null){
+            attribute.setValue("false");
+            logger.warn("disable android:debuggable .......");
+//            app.remove(attribute);
+        }
+    }
+
+    private static void addAndroidLabel(Document document,boolean pushInstall) {
+        Element root = document.getRootElement();// Get the root node
+        Element applicationElement = root.element("application");
+        Attribute attribute = applicationElement.attribute("android:extractNativeLibs");
+        if (attribute == null && pushInstall){
+            applicationElement.addAttribute("android:extractNativeLibs","false");
+        }else if (pushInstall){
+            attribute.setValue("false");
+        }else if (!pushInstall && attribute!= null){
+            applicationElement.remove(attribute);
+        }
     }
 
     /**
@@ -365,7 +421,7 @@ public class ManifestFileUtils {
      */
     private static void addApplicationMetaData(Document document, Map<String, File> libManifestMap,
                                                File baseBunfleInfoFile, ManifestOptions manifestOptions,
-                                               Set<String> remoteBundles) throws IOException, DocumentException {
+                                               Set<String> remoteBundles,Set<String>insideBundles) throws IOException, DocumentException {
         Map<String, BundleInfo> bundleFileMap = Maps.newHashMap();
         // Parsing basic information
         if (null != baseBunfleInfoFile && baseBunfleInfoFile.exists() && baseBunfleInfoFile.canRead()) {
@@ -411,7 +467,7 @@ public class ManifestFileUtils {
                     if (null != bundleInfo && bundleInfo.getDependency() != null) {
                         bundleDepValue = StringUtils.join(bundleInfo.getDependency(), "|");
                     }
-                    String value = libBundleInfo.applicationName + "," + !remoteBundles.contains(libBundleInfo.libName)
+                    String value = libBundleInfo.applicationName + "," + !(remoteBundles.contains(libBundleInfo.libName)||insideBundles.contains(libBundleInfo.libName))
                         + "," + bundleDepValue;
                     logger.info("[bundleInfo] add bundle value : " + value + " to manifest");
                     metaData.addAttribute("android:name", "bundle_" + bundlePackageName);
@@ -796,6 +852,8 @@ public class ManifestFileUtils {
         // First, we will manually process the tools:remove and tools:replace rules, and find that some of them are not necessarily possible through the ManifestMerge
         Element applicationElement = root.element("application");
 
+        List<Node> supportVersion = root.selectNodes("//meta-data");
+
         //Determines whether there is application and needs to be deleted
         if (null != applicationElement) {
             Attribute attribute = applicationElement.attribute("name");
@@ -803,6 +861,20 @@ public class ManifestFileUtils {
                 applicationElement.remove(attribute);
             }
         }
+
+        for (Node node : supportVersion) {
+            Element element = (Element)node;
+            Attribute attribute = element.attribute("name");
+            if (attribute != null) {
+                if (attribute.getValue().equals("android.support.VERSION")) {
+                    if (element.attribute("value")!= null)
+                    element.attribute("value").setValue("25.3.1");
+                }
+            }
+        }
+//        if (supportVersion!= null && supportVersion.size() > 0){
+//            if (supportVersion.("name");
+//        }
 
         Map<String, String> replaceAttrs = mainManifestFileObject.getReplaceApplicationAttribute();
         List<String> removeAttrs = mainManifestFileObject.getRemoveApplicationAttribute();
@@ -1109,5 +1181,12 @@ public class ManifestFileUtils {
         }
 
         return nodes;
+    }
+
+    public static void main(String []args) throws DocumentException {
+        File manifest = new File("/Users/lilong/.gradle/caches/transforms-1/files-1.1/recyclerview-v7-25.3.1.aar/1046cd92fdcfb77468417d61ed21e0db/AndroidManifest.xml");
+        Document document = XmlHelper.readXml(manifest);
+        Element element = document.getRootElement();
+        Attribute attribute = element.attribute("meta-data");
     }
 }

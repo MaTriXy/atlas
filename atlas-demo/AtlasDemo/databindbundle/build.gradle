@@ -17,7 +17,7 @@ version = '1.0.0'
 
 android {
     compileSdkVersion 25
-    buildToolsVersion '25.0.0'
+    buildToolsVersion '26.0.2'
 
     defaultConfig {
         minSdkVersion 14
@@ -37,6 +37,10 @@ android {
     dataBinding{
         enabled=true
     }
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_1_8
+        targetCompatibility JavaVersion.VERSION_1_8
+    }
 }
 
 dependencies {
@@ -46,5 +50,5 @@ dependencies {
 
     providedCompile 'com.android.support:support-v4:25.3.0'
     providedCompile 'com.android.support:appcompat-v7:25.1.0'
-    providedCompile 'com.android.support.constraint:constraint-layout:1.0.0-alpha8'
+    providedCompile 'com.android.support.constraint:constraint-layout:1.0.2'
 }

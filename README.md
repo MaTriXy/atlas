@@ -1,9 +1,9 @@
 # Atlas
 
 [![license](http://img.shields.io/badge/license-Apache2.0-brightgreen.svg?style=flat)](https://github.com/alibaba/atlas/blob/master/LICENSE)
-[![Release Version](https://img.shields.io/badge/atlas_core-5.1.0.0-orange.svg)](https://github.com/alibaba/atlas/releases/tag/v5.1.0.0) 
-[![Release Version](https://img.shields.io/badge/atlasupdate-1.1.4.21-blue.svg)](https://github.com/alibaba/atlas/releases/tag/v5.1.0.0) 
-[![Release Version](https://img.shields.io/badge/atlasplugin-2.3.3.rc63-green.svg)](https://github.com/alibaba/atlas/releases/tag/v5.1.0.0) 
+[![Release Version](https://img.shields.io/badge/atlas__core-5.1.0.9--rc26-orange.svg)](https://github.com/alibaba/atlas/releases/tag/v5.1.0.9-rc26) 
+[![Release Version](https://img.shields.io/badge/atlasplugin-3.0.1--rc88-green.svg)](https://github.com/alibaba/atlas/releases/tag/v5.1.0.9-rc26) 
+
 
 > A powerful Android Dynamic Component Framework.
 
@@ -37,12 +37,12 @@ You can see there were three main library in this project ([atlas-core](./atlas-
 * [Demo](./atlas-demo)
 * Doc: [English](), [中文](./atlas-docs)
 * DingTalk im group: Scan the follow QR code or Search group 11727755 using DingTalk(钉钉) app.
-![dingtalk.png](assets/dingtalk.png) 
+![dingtalk.jpg](assets/dingtalk.jpg) 
 
 
 ## Support
 ----------
-Atlas support all Android version from Android 4.0 to 8.0. 
+Atlas support all Android version from Android 4.0 to 9.0. 
 
 Follow is support status.
 
@@ -57,6 +57,7 @@ ART     | 5.1             | Yes
 ART     | M               | Yes
 ART     | N               | Yes
 ART     | 8.0             | Yes
+ART     | 9.0             | Yes
 
 <!--## Contributing
 
